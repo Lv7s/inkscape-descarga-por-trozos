@@ -27,6 +27,28 @@ Resultado: 150 trozos de 1 MiB, unos 15 minutos y 150 reintentos fallidos en tot
 
 > Eso describe un momento y un nodo concretos. Hoy el servidor puede estar bien, y no lo probé desde otras ciudades ni operadoras. No encontré nada que indique un bloqueo en Brasil.
 
+## Cómo se diagnostica (3 pasos)
+
+1. **¿Se corta siempre en el mismo punto?** Descarga normal y mira el tamaño que quedó.
+
+   ```bash
+   curl -L -o prueba.bin URL ; ls -l prueba.bin
+   ```
+
+   En el caso real quedaba siempre en 4.194.304 bytes (4 MiB) y `curl` daba error 92 o 18. Si el corte es siempre exacto y en el mismo lugar, el problema es del servidor y no de tu conexión.
+2. **¿El servidor acepta rangos?** Busca `Accept-Ranges: bytes` en las cabeceras.
+
+   ```bash
+   curl -sIL URL | grep -i -E "accept-ranges|content-length|http/"
+   ```
+3. **¿Entrega un trozo pequeño?** Pide solo el primer MiB y mira el código: `206` quiere decir que lo entregó.
+
+   ```bash
+   curl -s -r 0-1048575 -o /dev/null -w "%{http_code}\n" URL
+   ```
+
+   En el caso real los trozos de 1 MiB sí llegaban (código 206), aunque muchos pedidos fallaban con 503 y hubo que repetirlos. Por eso el script pide el archivo de 1 MiB en 1 MiB, repite el trozo que falla y sigue.
+
 ## Uso
 
 Solo necesita Python 3 (biblioteca estándar).
